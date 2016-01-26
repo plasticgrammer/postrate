@@ -1,0 +1,11 @@
+{
+  "name": "postrate",
+  "version": "0.0.0",
+  "description": "get forex rate history.",
+  "main": "server.js",
+  "repository": "",
+  "author": "plasticgrammer <plasticgrammer@gmail.com>",
+  "dependencies": {
+    "request": "*"
+  }
+}
