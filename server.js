@@ -7,9 +7,6 @@ app.use(express.logger('dev'));
 app.use(app.router);
 app.use(express.static(__dirname + '/client'));
 
-//app.get('/', function(req, res) {
-//});
-
 app.get('/rate/:pair/:tf', rate.saleBuyJudge);
 
 app.listen(process.env.PORT || 3000, process.env.IP || "0.0.0.0", function(){

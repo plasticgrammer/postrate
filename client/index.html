@@ -111,6 +111,9 @@
         var memoFixed = function(scale) {
             return function (val) {return (val||0).toFixed(scale);}
         };
+        var memoFixedFnc = function(scaleFnc) {
+            return memoFixed(scaleFnc());
+        };
         
         Vue.filter('fixed2', memoFixed(2));
         Vue.filter('fixed3', memoFixed(3));
@@ -128,7 +131,7 @@
               var $data = this.$data;
               // 送信
               $.ajax({
-                url: '/rate/' + $('#pair').text() + "/5min",
+                url: '/rate/' + $('#pair').text() + "/1h",
                 type: 'GET',
                 dataType: 'json'
               }).done(function(result) {
