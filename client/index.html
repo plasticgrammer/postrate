@@ -14,6 +14,9 @@
       #pair {
         width: 80px;
       }
+      #term {
+        width: 30px;
+      }
       /* for bootstrap */
       .form-control-wrapper {
         margin-bottom: 20px;
@@ -27,7 +30,7 @@
         display: none;
       }
 
-      /* for d3js */
+      /* for d3js 
       .axis {
         font-size: 0.6em;
       }
@@ -44,6 +47,7 @@
         stroke: nlack;
         stroke-width: 0.5px;
       }
+      */
     </style>
   </head>
   <body>
@@ -59,6 +63,17 @@
             <ul class="dropdown-menu" role="menu">
               <li v-repeat="p : pairs">
                 <a href="javascript:$('#pair').text('{{p}}')">{{p}}</a>
+              </li>
+            </ul>
+          </div>
+          <div class="btn-group">
+            <button type="button" class="btn btn-primary" id="term" v-cloak>{{form.term}}</button>
+            <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+              <span class="caret"></span>
+            </button>
+            <ul class="dropdown-menu" role="menu">
+              <li v-repeat="t : terms">
+                <a href="javascript:$('#term').text('{{t}}')">{{t}}</a>
               </li>
             </ul>
           </div>
@@ -111,9 +126,6 @@
         var memoFixed = function(scale) {
             return function (val) {return (val||0).toFixed(scale);}
         };
-        var memoFixedFnc = function(scaleFnc) {
-            return memoFixed(scaleFnc());
-        };
         
         Vue.filter('fixed2', memoFixed(2));
         Vue.filter('fixed3', memoFixed(3));
@@ -122,7 +134,8 @@
           el: '#result',
           data: {
             pairs: ["USDJPY","EURJPY","GBPJPY","EURUSD"],
-            form: {pair: "USDJPY"},
+            terms: ["1h","4h","1d"],
+            form: {pair: "USDJPY", term: "1h"},
             item: {},
             rates: []
           },
@@ -131,7 +144,7 @@
               var $data = this.$data;
               // 送信
               $.ajax({
-                url: '/rate/' + $('#pair').text() + "/1h",
+                url: '/rate/' + $('#pair').text() + "/" + $('#term').text().toLowerCase(),
                 type: 'GET',
                 dataType: 'json'
               }).done(function(result) {
