@@ -1,34 +1,33 @@
 var rq = require('request');
 var csv = require('comma-separated-values');
-var _ = require('underscore');
 
 /*
  * Rate情報をfxstreetより取得し、JSON形式で返却する
  */
-var RatesJson = function() {
+var RatesJson = () => {
   var decorators = [];
 
-  var handler = function(req, res) {
+  var handler = (req, res) => {
     var pair = req.params.pair.toLowerCase(),
         tf = req.params.tf;
     var param = ['period=' + (tf == '4h' ? 250 : 100), 'pair=' + pair, '&tf=' + (tf == '4h' ? '1h' : tf)];
     var url = 'http://www.fxstreet.jp/_enginys/ratehistorytools/export.aspx?' + param.join('&');
 
     // CSV取得リクエスト送信
-    rq.get(url, function(error, resz, body) {
+    rq.get(url, (error, resz, body) => {
       // CSVデータをJSONに
       var json = new csv(body, {header: true}).parse();
 
       // 4h対応
       if (tf == '4h') {
         var h = 0;
-        json = _.filter(json, function(item){
+        json = json.filter(item => {
           return ((h++ % 4) === 0);
         });
       }
       
       // 日付変換（GMT日付+9、日付と時間に分離）
-      json = _.map(json, function(item){
+      json = json.map(item => {
         var d = new Date();
         d.setTime(Date.parse(item['日付']) + 9 * 60 * 60 * 1000);
         item["日付"] = d.getFullYear() + "-" + ('0'+(d.getMonth() + 1)).slice(-2) + "-" + ('0'+d.getDate()).slice(-2);
@@ -37,8 +36,10 @@ var RatesJson = function() {
       });
       
       // 日付、時間の昇順でソート
-      json = _.sortBy(json, function(item){
-        return item['日付'] + item['時間'];
+      json = json.sort((a, b) => {
+        var keyA = a['日付'] + a['時間'];
+        var keyB = b['日付'] + b['時間'];
+        return (keyA < keyB ? -1 : (keyA > keyB ? 1 : 0));
       });
       
       // 引数指定されたJSON加工処理を実行
@@ -57,7 +58,7 @@ var RatesJson = function() {
     });
   };
   
-  handler.decorator = function(d) {
+  handler.decorator = d  => {
     decorators.push(d);
     return handler;
   };
@@ -68,9 +69,9 @@ var RatesJson = function() {
 /*
  * 売買ジャッジ数値算出
  */
-var sbj = function(json) {
+var sbj = json => {
   var i = 0, rsum = 0, msum = 0, preItem = {};
-  json = _.map(json, function(item){
+  json = json.map(item => {
     /*
      EMA12:  12番目は1-12のRATE平均、それ以降は(今回終値*2+前回EMA12*11)/13
      EMA26:  26番目は1-26のRATE平均、それ以降は(今回終値*2+前回EMA26*25)/27
@@ -96,11 +97,11 @@ var sbj = function(json) {
 /*
  * 標準偏差
  */
-var sigma = function(json) {
-  var signD = function(preItem, item, name) {return (preItem[name] <= item[name] ? '△' : '▼');};
+var sigma = json => {
+  var signD = (preItem, item, name) => {return (preItem[name] <= item[name] ? '△' : '▼');};
   var preItem = {};
   var rateArray = [], term = 21;
-  json = _.map(json, function(item){
+  json = json.map(item => {
     // 最大数がtermの終値リスト
     rateArray.push(item['終値']);
     if (rateArray.length > term) {
@@ -108,11 +109,11 @@ var sigma = function(json) {
     }
     // リスト要素の合計値、平均値
     var sum = 0;
-    _.each(rateArray, function(r){sum+=r;});
+    rateArray.forEach(r => {sum+=r;});
     var ave = sum / term;
     // 標準偏差
     var vsum = 0;
-    _.each(rateArray, function(r){vsum+=Math.pow(r - ave, 2);});
+    rateArray.forEach(r => {vsum += Math.pow(r - ave, 2);});
     var sd = Math.sqrt(vsum / term);
     item['AVE'] = ave;
     item['SD'] = sd;
@@ -133,11 +134,9 @@ var sigma = function(json) {
 exports.saleBuyJudge = RatesJson()
   .decorator(sbj)
   .decorator(sigma)
-  .decorator(function(json) {
+  .decorator(json => {
     var i = 0;
     // SIGNALが設定されている34番目から
-    json = _.filter(json, function(item) {
-      return (i++ >= 34);
-    });
+    json = json.filter(item => (i++ >= 34));
     return json;
    });
