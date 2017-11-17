@@ -21,20 +21,18 @@ var RatesJson = () => {
       // 4h対応
       if (tf == '4h') {
         var h = 0;
-        json = json.filter(item => {
-          return ((h++ % 4) === 0);
-        });
+        json = json.filter(item => ((h++ % 4) === 0));
       }
       
       // 日付変換（GMT日付+9、日付と時間に分離）
       json = json.map(item => {
-        var d = new Date();
-        d.setTime(Date.parse(item['日付']) + 9 * 60 * 60 * 1000);
+        var d = new Date(),
+          diff_ms = 9 * 60 * 60 * 1000;
+        d.setTime(Date.parse(item['日付']) + diff_ms);
         item["日付"] = d.getFullYear() + "-" + ('0'+(d.getMonth() + 1)).slice(-2) + "-" + ('0'+d.getDate()).slice(-2);
         item["時間"] = ('0'+d.getHours()).slice(-2) + ":" + ('0'+d.getMinutes()).slice(-2);
         return item;
       });
-      
       // 日付、時間の昇順でソート
       json = json.sort((a, b) => {
         var keyA = a['日付'] + a['時間'];
@@ -43,14 +41,7 @@ var RatesJson = () => {
       });
       
       // 引数指定されたJSON加工処理を実行
-      for (var i = 0; i < decorators.length; i++) {
-        var result = decorators[i](json);
-        if (result) {
-          json = result;
-        } else {
-          console.log("decorator returned null.");
-        }
-      }
+      json = decorators.reduce((j, fn) => fn(j), json);
   
       // JSONを返却
       res.contentType('application/json');
@@ -58,7 +49,7 @@ var RatesJson = () => {
     });
   };
   
-  handler.decorator = d  => {
+  handler.decorator = d => {
     decorators.push(d);
     return handler;
   };
@@ -98,23 +89,22 @@ var sbj = json => {
  * 標準偏差
  */
 var sigma = json => {
-  var signD = (preItem, item, name) => {return (preItem[name] <= item[name] ? '△' : '▼');};
+  const SD_TERM = 21;   // 算出期間
+  var signD = (preItem, item, name) => (preItem[name] <= item[name] ? '△' : '▼');
   var preItem = {};
-  var rateArray = [], term = 21;
+  var rateArray = [];
   json = json.map(item => {
-    // 最大数がtermの終値リスト
+    // 最大数がTERMの終値リスト
     rateArray.push(item['終値']);
-    if (rateArray.length > term) {
+    if (rateArray.length > SD_TERM) {
       rateArray.shift();
     }
     // リスト要素の合計値、平均値
-    var sum = 0;
-    rateArray.forEach(r => {sum+=r;});
-    var ave = sum / term;
+    var sum = rateArray.reduce((a, b) => a + b);
+    var ave = sum / SD_TERM;
+    var vsum = rateArray.reduce((a, b) => a + Math.pow(b - ave, 2), 0);
     // 標準偏差
-    var vsum = 0;
-    rateArray.forEach(r => {vsum += Math.pow(r - ave, 2);});
-    var sd = Math.sqrt(vsum / term);
+    var sd = Math.sqrt(vsum / SD_TERM);
     item['AVE'] = ave;
     item['SD'] = sd;
     item['SD_DIFF'] = item['SD'] - preItem['SD'];
@@ -127,16 +117,10 @@ var sigma = json => {
   return json;
 };
 
-
 /*
  * 売買ジャッジ情報をJSONで返却
  */
 exports.saleBuyJudge = RatesJson()
   .decorator(sbj)
   .decorator(sigma)
-  .decorator(json => {
-    var i = 0;
-    // SIGNALが設定されている34番目から
-    json = json.filter(item => (i++ >= 34));
-    return json;
-   });
+  .decorator(json => json.slice(34 - 1));      // SIGNALが設定されている34番目から
